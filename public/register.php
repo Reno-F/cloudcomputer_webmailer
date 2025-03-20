@@ -2,6 +2,11 @@
 session_start();
 include 'firebase_config.php';
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'vendor/autoload.php'; // Pastikan PHPMailer terinstall
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email = $_POST['email'];
     $password = $_POST['password'];
@@ -13,14 +18,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             echo "Email sudah digunakan. <a href='login.php'>Login di sini</a>";
             exit();
         } catch (\Kreait\Firebase\Exception\Auth\UserNotFound $e) {
-            // Lanjutkan jika email belum terdaftar
+            // Jika email belum terdaftar, lanjutkan proses registrasi
         }
 
         // Buat akun pengguna di Firebase Authentication
         $userProperties = [
             'email' => $email,
             'password' => $password,
-            'emailVerified' => false // Pastikan email belum diverifikasi
         ];
         $createdUser = $auth->createUser($userProperties);
         $uid = $createdUser->uid;
@@ -33,39 +37,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         ];
         $database->getReference('users/'.$uid)->set($userData);
 
-        // Kirim email verifikasi
-        $auth->sendEmailVerification($createdUser);
+        // **Buat link verifikasi email**
+        $actionCodeSettings = [
+            'continueUrl' => 'http://localhost/verify.php', // Ganti dengan domain Anda
+            'handleCodeInApp' => false
+        ];
+        $verificationLink = $auth->getEmailVerificationLink($email, $actionCodeSettings);
 
-        $message = "Registrasi berhasil! Silakan cek email Anda untuk verifikasi sebelum login.";
+        // **Kirim email verifikasi dengan PHPMailer**
+        $mail = new PHPMailer(true);
+        try {
+            $mail->isSMTP();
+            $mail->Host = 'smtp.gmail.com'; // Sesuaikan dengan SMTP Anda
+            $mail->SMTPAuth = true;
+            $mail->Username = 'emailanda@gmail.com'; // Ganti dengan email Anda
+            $mail->Password = 'passwordemail'; // Ganti dengan password email Anda
+            $mail->SMTPSecure = 'tls';
+            $mail->Port = 587;
+
+            $mail->setFrom('emailanda@gmail.com', 'Admin');
+            $mail->addAddress($email);
+
+            $mail->isHTML(true);
+            $mail->Subject = 'Verifikasi Email Anda';
+            $mail->Body = "Klik link berikut untuk verifikasi email Anda: <a href='$verificationLink'>Verifikasi Email</a>";
+
+            $mail->send();
+            echo "Registrasi berhasil! Silakan cek email Anda untuk verifikasi.";
+        } catch (Exception $e) {
+            echo "Email gagal dikirim. Error: {$mail->ErrorInfo}";
+        }
+
+        exit();
     } catch (Exception $e) {
-        $message = "Registrasi gagal: " . $e->getMessage();
+        echo "Registrasi gagal: " . $e->getMessage();
     }
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; text-align: center; }
-        .container { max-width: 400px; background: white; padding: 20px; margin: auto; box-shadow: 0px 0px 10px rgba(0,0,0,0.1); }
-        input, button { width: 100%; padding: 10px; margin: 10px 0; }
-        button { background: blue; color: white; border: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Register</h2>
-        <?php if (isset($message)) echo "<p>$message</p>"; ?>
-        <form action="register.php" method="POST">
-            <input type="email" name="email" required placeholder="Email">
-            <input type="password" name="password" required placeholder="Password">
-            <button type="submit">Register</button>
-        </form>
-        <a href="login.php">Sudah punya akun? Login</a>
-    </div>
-</body>
-</html>
