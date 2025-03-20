@@ -7,14 +7,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'];
 
     try {
-        // Proses login ke Firebase Authentication
+        // Login ke Firebase Authentication
         $signInResult = $auth->signInWithEmailAndPassword($email, $password);
         $user = $signInResult->data();
-        
-        // Ambil UID pengguna yang login
+
+        // Cek apakah email sudah diverifikasi
+        $firebaseUser = $auth->getUserByEmail($email);
+        if (!$firebaseUser->emailVerified) {
+            echo "Email belum diverifikasi. Silakan cek email Anda.";
+            exit();
+        }
+
+        // Ambil UID pengguna
         $uid = $signInResult->firebaseUserId();
 
-        // Ambil data user dari Realtime Database berdasarkan UID
+        // Ambil data user dari Realtime Database
         $userData = $database->getReference('users/'.$uid)->getValue();
 
         if ($userData) {
@@ -31,19 +38,3 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Login</title>
-</head>
-<body>
-    <h2>Login</h2>
-    <form method="POST">
-        <input type="email" name="email" required placeholder="Email"><br>
-        <input type="password" name="password" required placeholder="Password"><br>
-        <button type="submit">Login</button>
-    </form>
-    <a href="register.php">Belum punya akun? Register</a>
-</body>
-</html>
