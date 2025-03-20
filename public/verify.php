@@ -8,12 +8,24 @@ if (isset($_GET['oobCode'])) {
     try {
         // Verifikasi email dengan kode yang diberikan
         $auth->verifyEmail($oobCode);
-
-        echo "Email berhasil diverifikasi! <a href='login.php'>Login di sini</a>";
+        $message = "Email berhasil diverifikasi! <a href='login.php'>Login di sini</a>";
     } catch (Exception $e) {
-        echo "Verifikasi gagal: " . $e->getMessage();
+        $message = "Verifikasi gagal: " . $e->getMessage();
     }
 } else {
-    echo "Kode verifikasi tidak ditemukan.";
+    $message = "Kode verifikasi tidak ditemukan.";
 }
 ?>
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verifikasi Email</title>
+</head>
+<body>
+    <h2>Verifikasi Email</h2>
+    <p><?php echo $message; ?></p>
+</body>
+</html>
